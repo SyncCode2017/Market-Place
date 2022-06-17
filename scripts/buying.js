@@ -21,34 +21,49 @@ async function main() {
     await transactionResponse.wait(1)
     console.log("Deposited!")
     const myBalance = await marketPlaceConnected.myBalance()
-    // const myBalance = await marketPlace.myBalance(
-    //     "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc"
-    // )
-    //await myBalance.wait(1)
-    console.log(`Your balance is ${myBalance}`)
+    const fmyBalance = ethers.utils.formatEther(myBalance, "ether")
+
+    console.log(`Your balance is ${fmyBalance}`)
     const tx = await marketPlaceConnected.withdrawEther(
-        ethers.utils.parseEther("10"),
-        {
-            from: userBuy.address,
-        }
+        ethers.utils.parseEther("10")
     )
     const newBalance = await marketPlaceConnected.myBalance()
-    console.log(`After withdrawal, your new balance is ${newBalance}`)
 
-    // Buying
+    const fnewBalance = ethers.utils.formatEther(newBalance, "ether")
+    console.log(`After withdrawal, your new balance is ${fnewBalance}`)
+
+    // Making transactions
     console.log(`I want to buy ...`)
-    const trx = await marketPlaceConnected.fillOrder(1, 10)
+    const trx = await marketPlaceConnected.fillOrder(3, 2)
     await trx.wait(1)
-    console.log(`Bought something! ...`)
-    const tranx = await marketPlaceConnected.OrderReceived(1)
+    const trx1 = await marketPlaceConnected.fillOrder(1, 5)
+    await trx1.wait(1)
+    const trx2 = await marketPlaceConnected.fillOrder(5, 5)
+    await trx2.wait(1)
+    console.log("Bought something! ...")
+    console.log(" ")
+    console.log("-------------------------------------------")
+    const tranx1 = await marketPlaceConnected.cancelFilledOrder(5)
+    await tranx1.wait(1)
+    const IBalance = await marketPlaceConnected.myBalance()
+
+    const fIBalance = ethers.utils.formatEther(IBalance, "ether")
+    console.log(`After cancelling an order, your new balance is ${fIBalance}`)
+    console.log("-------------------------------------------")
+    console.log(" ")
+    const tranx = await marketPlaceConnected.OrderReceived(3)
     await tranx.wait(1)
+    console.log("--------Buyer received the order!-------------------")
     const buyerBalance = await marketPlaceConnected.myBalance()
-    console.log(`After buying, buyer balance is ${buyerBalance}`)
+    const fbuyerBalance = ethers.utils.formatEther(buyerBalance, "ether")
+    console.log(`After buying, buyer balance is ${fbuyerBalance}`)
 
     //Getting Seller Balance
     const marketPlaceSellerConnected = await marketPlace.connect(userSell)
     const sellerBalance = await marketPlaceSellerConnected.myBalance()
-    console.log(`After buying, seller balance is ${sellerBalance}`)
+    const fsellerBalance = ethers.utils.formatEther(sellerBalance, "ether")
+    console.log(" ")
+    console.log(`After selling, seller balance is ${fsellerBalance}`)
 }
 
 main()

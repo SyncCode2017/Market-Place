@@ -1,51 +1,66 @@
-const { getNamedAccounts, deployments, ethers } = require("hardhat")
-//const { networkConfig, developmentChains } = require("../helper-hardhat-config")
 const { assert, expect } = require("chai")
+const { network, deployments, ethers } = require("hardhat")
+const {
+    developmentChains,
+    networkConfig,
+} = require("../../helper-hardhat-config")
 
-describe("Marketplace", function () {
-    let marketPlace
-    //let mockV3Aggregator
-    let deployer
-    const sendValue = ethers.utils.parseEther("1")
-    //const withdrawValue = ethers.utils.parseEther("0.5")
-    beforeEach(async () => {
-        const accounts = await ethers.getSigners()
-        const userSell = accounts[1]
-        const userBuy = accounts[2]
-        const { deployer } = await getNamedAccounts()
-        await deployments.fixture(["all"])
-        marketPlace = await ethers.getContract("Marketplace")
-    })
+!developmentChains.includes(network.name)
+    ? describe.skip
+    : describe("Marketplace Unit Tests", async function () {
+          let marketPlace, sendValue, accounts, userSell, userBuy, deployer
 
-    describe("deposit", function () {
-        it("Updates the amount deposit data structure", async () => {
-            await marketPlace.depositEther({ value: sendValue })
-            const response = await marketPlace.myBalance()
-            // assert.equal(response.toString(), sendValue.toString())
-        })
-    })
-    describe("withdraw", function () {
-        beforeEach(async () => {
-            await marketPlace.depositEther({ value: sendValue })
-        })
-        it("withdraws ETH", async () => {
-            const startingDeployerBalance =
-                await marketPlace.provider.myBalance()
+          beforeEach(async () => {
+              await deployments.fixture(["all"])
+              marketPlace = await ethers.getContract("Marketplace")
+              sendValue = ethers.utils.parseEther("10")
+              accounts = await ethers.getSigners()
+              deployer = accounts[0]
+              userSell = accounts[1]
+              userBuy = accounts[2]
+          })
 
-            // Act
-            const transactionResponse = await marketPlace.withdrawEther(
-                sendValue
-            )
-            const transactionReceipt = await transactionResponse.wait()
-            // const { gasUsed, effectiveGasPrice } = transactionReceipt
-            // const gasCost = gasUsed.mul(effectiveGasPrice)
+          describe("deposit", function () {
+              it("Updates the amount deposit in data structure", async () => {
+                  const marketPlaceConnected = await marketPlace.connect(
+                      userBuy
+                  )
+                  await marketPlaceConnected.depositEther({ value: sendValue })
+                  const response = await marketPlaceConnected.myBalance()
+                  assert.equal(response.toString(), sendValue.toString())
+              })
+          })
+          describe("withdraw", function () {
+              //   beforeEach(async () => {
+              //       //await marketPlaceConnected.depositEther({ value: sendValue })
+              //   })
+              it("withdraws ETH", async () => {
+                  const marketPlaceConnected = await marketPlace.connect(
+                      userBuy
+                  )
+                  const startingBalance = await marketPlaceConnected.myBalance()
 
-            // const endingDeployerBalance = await marketPlace.provider.balanceOf(
-            //     deployer
-            // )
+                  // Act
+                  const transactionResponse =
+                      await marketPlaceConnected.withdrawEther(startingBalance)
+                  const transactionReceipt = await transactionResponse.wait(1)
+                  //   const { gasUsed, effectiveGasPrice } = transactionReceipt
+                  //   const gasCost = gasUsed.mul(effectiveGasPrice)
 
-            // // Assert
-            // assert.equal(endingDeployerBalance, 0)
-        })
-    })
-})
+                  const endingBalance = await marketPlaceConnected.myBalance()
+
+                  // Assert
+                  assert.equal(endingBalance, "0")
+              })
+              it("Can only withdraw your balance", async () => {
+                  //const { deployer } = await getNamedAccounts()
+                  const marketPlaceDeployerConnected =
+                      await marketPlace.connect(deployer)
+
+                  // Act
+                  await expect(
+                      marketPlaceDeployerConnected.withdrawEther(sendValue)
+                  ).to.be.revertedWith("Marketplace__SmallerBalance")
+              })
+          })
+      })

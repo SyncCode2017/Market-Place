@@ -1,19 +1,6 @@
 const { getNamedAccounts, deployments, network } = require("hardhat")
 const { networkConfig, developmentChains } = require("../helper-hardhat-config")
 const { verify } = require("../utils/verify")
-// let ethAddress
-// const getEthAddress = async () => {
-//     let eth_Address
-//     if (developmentChains.includes(network.name)) {
-//         const token = await deployments.get("Token")
-//         eth_Address = token.address
-//     } else {
-//         eth_Address = networkConfig[chainId]["eth_address"]
-//     }
-//     return eth_Address
-// }
-// module.exports = getEthAddress
-// ethAddress = getEthAddress()
 
 module.exports = async ({ getNamedAccounts, deployments }) => {
     const { deploy, log } = deployments

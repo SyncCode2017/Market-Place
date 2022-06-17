@@ -2,7 +2,7 @@ const { getNamedAccounts, ethers } = require("hardhat")
 //const { network, deployments,  } = require("hardhat")
 
 const dict_item = ["orange", "bread", "mango", "bannana", "beans", "rice"]
-var allowedItems = []
+//const allowedItems = []
 
 async function main() {
     const { deployer } = await getNamedAccounts()
@@ -22,24 +22,24 @@ async function main() {
     //     }
     // )
     //await transactionResponse.wait(1)
-    dict_item.forEach(storeItem)
+    //dict_item.forEach(storeItem)
 
-    async function storeItem(item) {
-        const transactionResponse = await marketPlace.addAllowedItems(item)
-        await transactionResponse.wait(1)
-    }
-
-    // const items = dict_item.length
-    // for (let i = 0; i < items; i++) {
-    //     const transactionResponse = await marketPlace.addAllowedItems(
-    //         dict_item[i]
-    //     )
-
+    // //async function storeItem(item) {
+    //     const transactionResponse = await marketPlace.addAllowedItems("item")
     //     await transactionResponse.wait(1)
-    //     console.log(`${transactionResponse}`)
-    // }
-    allowedItems = await marketPlace.allowedItems
-    console.log(`allowed items are ${toString(allowedItems)}`)
+    // //}
+
+    //const items = dict_item.length
+    for (let i = 0; i < dict_item.length; i++) {
+        const transactionResponse = await marketPlace.addAllowedItems(
+            dict_item[i]
+        )
+
+        await transactionResponse.wait(1)
+        console.log('entered ...')
+    }
+    const allowedItems = await marketPlace.getAllowedItems()
+    console.log(`allowed items are ${allowedItems}`)
 }
 
 main()

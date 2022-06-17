@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.8;
+pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+error Marketplace__NewItemExist();
 error Marketplace__NotOwner();
+error Marketplace__NotYourOrder();
+error Marketplace__SmallerBalance();
 
 /** @title A contract for buying and selling items
  *  @author Abolaji
@@ -13,12 +17,12 @@ error Marketplace__NotOwner();
 
 contract Marketplace {
     //Variables
-    address public immutable feeAccount;
+    address private immutable feeAccount;
     uint256 public immutable feePercent;
     address public immutable i_owner;
     string public item;
-    string[] public allowedItems;
     address payable internal user;
+    uint256 public orderCount;
 
     struct _order {
         uint256 id;
@@ -34,7 +38,6 @@ contract Marketplace {
     // store the order
     mapping(address => uint256) public getBal;
     mapping(uint256 => _order) public orders;
-    uint256 public orderCount;
     mapping(uint256 => ORDER_STATE) public orderStatus;
     mapping(uint256 => bool) public orderCancelled;
     mapping(uint256 => bool) public orderFilled;
@@ -43,6 +46,8 @@ contract Marketplace {
     mapping(uint256 => address) public Buyers;
     mapping(uint256 => uint256) public filledAmount;
     mapping(uint256 => uint256) public filledQuantity;
+    //_order[] public OpenOrder;
+    string[] public allowedItems;
 
     //Events
     event Deposit(address user, uint256 amount, uint256 bal);
@@ -110,7 +115,6 @@ contract Marketplace {
     }
 
     modifier onlyOwner() {
-        // require(msg.sender == i_owner);
         if (msg.sender != i_owner) revert Marketplace__NotOwner();
         _;
     }
@@ -122,7 +126,10 @@ contract Marketplace {
 
     function withdrawEther(uint256 _amount) public {
         user = payable(msg.sender);
-        require(getBal[msg.sender] >= _amount);
+        //require(getBal[msg.sender] >= _amount);
+        if (getBal[msg.sender] < _amount) {
+            revert Marketplace__SmallerBalance();
+        }
         getBal[msg.sender] = getBal[msg.sender] - _amount;
         user.transfer(_amount);
         emit Withdraw(msg.sender, _amount, getBal[msg.sender]);
@@ -132,7 +139,7 @@ contract Marketplace {
         return getBal[msg.sender];
     }
 
-    // Create an order
+    // Create an order as a seller
     function makeOrder(
         string memory _item,
         uint256 _quantity,
@@ -140,7 +147,6 @@ contract Marketplace {
     ) public {
         require(itemIsAllowed(_item), "Item is currently not allowed");
         orderCount = orderCount + 1;
-        orderStatus[orderCount] = ORDER_STATE.CLOSED;
         orders[orderCount] = _order(
             orderCount,
             msg.sender,
@@ -194,15 +200,30 @@ contract Marketplace {
         );
     }
 
-    //Getting orders that are still for buying
-    function open_order() public view returns (_order[] memory) {
-        _order[] memory OpenOrder;
+    //Getting orders that are still available for buying
+    function open_order()
+        public
+        view
+        returns (
+            uint256[] memory idOrder,
+            string[] memory _item,
+            uint256[] memory _qty,
+            uint256[] memory _prc
+        )
+    {
+        idOrder = new uint256[](orderCount);
+        _item = new string[](orderCount);
+        _qty = new uint256[](orderCount);
+        _prc = new uint256[](orderCount);
         for (uint256 i = 1; i <= orderCount; i++) {
             if (orderStatus[i] == ORDER_STATE.OPEN) {
-                OpenOrder[i] = orders[i];
+                idOrder[i - 1] = orders[i].id;
+                _item[i - 1] = orders[i].item;
+                _qty[i - 1] = orders[i].qtty_to_sell;
+                _prc[i - 1] = orders[i].price / (10**15);
             }
         }
-        return OpenOrder;
+        return (idOrder, _item, _qty, _prc);
     }
 
     // When the buyer confirms the receipt of the items, the money is released to the seller
@@ -281,8 +302,8 @@ contract Marketplace {
         _order memory order = orders[_id];
         // place order
         getBal[_buyer] = getBal[_buyer] - _amount;
-        goods[msg.sender][order.item] =
-            goods[msg.sender][order.item] -
+        goods[order.seller][order.item] =
+            goods[order.seller][order.item] -
             _quantity;
     }
 
@@ -303,6 +324,7 @@ contract Marketplace {
     }
 
     function addAllowedItems(string memory _item) public onlyOwner {
+        //require (newItemIsUnique(_item));
         allowedItems.push(_item);
     }
 
@@ -320,5 +342,19 @@ contract Marketplace {
             }
         }
         return false;
+    }
+
+    // function newItemIsUnique(string memory _item) public view  returns (bool) {
+    //     string[] memory itemArray= allowedItems;
+    //     for (uint256 i=0; i<itemArray.length; i++){
+    //         if (keccak256(bytes(itemArray[i]))==keccak256(bytes(_item))){
+    //             revert Marketplace__NewItemExist();
+    //         }
+    //     }
+    //     return true;
+    // }
+
+    function getAllowedItems() public view returns (string[] memory) {
+        return allowedItems;
     }
 }
