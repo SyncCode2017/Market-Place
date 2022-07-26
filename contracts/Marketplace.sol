@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.8;
-pragma experimental ABIEncoderV2;
+//pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol"
 
 error Marketplace__NewItemExist();
 error Marketplace__NotOwner();
@@ -15,7 +16,7 @@ error Marketplace__SmallerBalance();
  *  @dev
  */
 
-contract Marketplace {
+contract Marketplace is ReentrancyGuard{
     //Variables
     address private immutable feeAccount;
     uint256 public immutable feePercent;
