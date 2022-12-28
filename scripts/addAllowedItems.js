@@ -1,10 +1,20 @@
 const { getNamedAccounts, ethers } = require("hardhat")
-//const { network, deployments,  } = require("hardhat")
+const { network  } = require("hardhat")
+const { moveBlocks, sleep } = require("../utils/move-blocks")
 
-const dict_item = ["orange", "bread", "mango", "bannana", "beans", "rice"]
+const dict_item = [
+    "orange",
+    "bread",
+    "mango",
+    "bannana",
+    "beans",
+    "rice",
+    "32in-bone-straight-wig",
+]
 //const allowedItems = []
 
 async function main() {
+    const chainId = network.config.chainId
     const { deployer } = await getNamedAccounts()
     const accounts = await ethers.getSigners()
     const userSell = accounts[1]
@@ -35,11 +45,14 @@ async function main() {
             dict_item[i]
         )
 
-        await transactionResponse.wait(1)
-        console.log('entered ...')
+        await transactionResponse.wait()
+        console.log("entered ...")
     }
-    const allowedItems = await marketPlace.getAllowedItems()
-    console.log(`allowed items are ${allowedItems}`)
+    // const allowedItems = await marketPlace.getAllowedItems()
+    // console.log(`allowed items are ${allowedItems}`)
+    if (chainId == 31337) {
+        await moveBlocks(2, (sleepAmount = 1000))
+    }
 }
 
 main()
