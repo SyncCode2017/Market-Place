@@ -29,7 +29,6 @@ contract Marketplace is ReentrancyGuard {
     uint256 public orderCount;
 
     struct _order {
-        uint256 id;
         address seller;
         string item;
         uint256 qtty_to_sell;
@@ -173,7 +172,6 @@ contract Marketplace is ReentrancyGuard {
         if (!allowedItems[_item]) revert Marketplace__ItemNotAllowed();
         orderCount += 1;
         orders[orderCount] = _order(
-            orderCount,
             msg.sender,
             _item,
             _quantity,
@@ -243,7 +241,7 @@ contract Marketplace is ReentrancyGuard {
         _prc = new uint256[](orderCount);
         for (uint256 i = 1; i <= orderCount; i++) {
             if (orderStatus[i] == ORDER_STATE.OPEN) {
-                idOrder[i - 1] = orders[i].id;
+                idOrder[i - 1] = i;
                 _item[i - 1] = orders[i].item;
                 _qty[i - 1] = orders[i].qtty_to_sell;
                 _prc[i - 1] = orders[i].price / (10 ** 15);

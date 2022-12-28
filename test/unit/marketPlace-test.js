@@ -1,93 +1,75 @@
 const { assert, expect } = require("chai")
-const { network, deployments, ethers, getNamedAccounts, getUnnamedAccounts } = require("hardhat")
+const { network, deployments, ethers, getNamedAccounts } = require("hardhat")
 const {
     developmentChains,
     networkConfig,
 } = require("../../helper-hardhat-config")
-const { setupUser, setupUsers } = require("../../utils/helper-functions")
 
-const setup = deployments.createFixture(async () => {
-    await deployments.fixture()
-    const { deployer, userSell, userBuy } = await getNamedAccounts()
-
-    const contracts = {
-        marketplace  : await ethers.getContract("Marketplace"),
-    }
-
-    return {
-        ...contracts,
-        users    : await setupUsers(await getUnnamedAccounts(), contracts),
-        deployer : await setupUser(deployer, contracts),
-        userBuy    : await setupUser(userBuy, contracts),
-        userSell     : await setupUser(userSell, contracts),
-
-    }
-})
-
-const verifyItemsAllowed = async(items) => {
-    
-    for (const item of items) {
-        const isAllowed  = await marketPlace.allowedItems(item)
-        assert.equal( isAllowed, true)
-    }
-}
+const pricePerUnit = ethers.utils.parseEther("10")
+const quantity = 10
+const dict_item = [
+    "orange",
+    "bread",
+    "mango",
+    "bannana",
+    "beans",
+    "rice",
+    "32in-bone-straight-wig",
+]
+const invalidItem = "blue"
 
 describe("Marketplace Unit Tests", async function () {
-    let marketplace, userSell, userBuy, deployer
-    const unitValue = ethers.utils.parseEther("10")
-    const dict_item = [
-        "orange",
-        "bread",
-        "mango",
-        "bannana",
-        "beans",
-        "rice",
-        "32in-bone-straight-wig",
-    ]
-
+    let marketplace, marketplaceConnected, deployer, userBuy, userSell, accounts, marketplaceSeller, marketplaceBuyer
+  
     beforeEach(async () => {
+        accounts = await ethers.getSigners() 
+        deployer = accounts[0]
+        userSell = accounts[1]
+        userBuy = accounts[2]
         await deployments.fixture(["all"])
-        ({ deployer, userBuy, userSell, marketplace } = await setup())
+        await deployments.fixture(["marketplace"])
+        marketplace = await ethers.getContract("Marketplace")
+        marketplaceConnected = await ethers.getContract("Marketplace", deployer)
+        marketplaceSeller = await marketplace.connect(userSell)
+        marketplaceBuyer = await marketplace.connect(userBuy)
     })
 
     describe("allowed items", function () {
         it("allows the owner to add allowed items", async () => {
-            for (let i = 0; i < dict_item.length; i++) {
-                const transactionResponse = await deployer.marketPlace.addAllowedItems(
-                    dict_item[i]
-                )
-                await transactionResponse.wait()
+            for (const item of dict_item) {
+                const trx = await marketplaceConnected.addAllowedItems(item)
+                await trx.wait()
+                const isAllowed  = await marketplace.allowedItems(item)
+                assert.equal(isAllowed, true)
             }
-            assert.equal(response.toString(), sendValue.toString())
+        })
+        it("does not allow other users to add allowed items ", async () => {
+            await expect(
+                marketplaceBuyer.addAllowedItems("bread")
+            ).to.be.revertedWith("Marketplace__NotOwner()")
         })
     })
-    // describe("withdraw", function () {
-    //     //   beforeEach(async () => {
-    //     //       //await marketPlaceConnected.depositEther({ value: sendValue })
-    //     //   })
-    //     it("withdraws ETH", async () => {
-    //         const startingBalance = await userBuy.marketplace.myBalance()
 
-    //         // Act
-    //         const transactionResponse = await marketPlaceConnected.withdrawEther(startingBalance)
-    //         const transactionReceipt = await transactionResponse.wait(1)
-    //         //   const { gasUsed, effectiveGasPrice } = transactionReceipt
-    //         //   const gasCost = gasUsed.mul(effectiveGasPrice)
-
-    //         const endingBalance = await marketPlaceConnected.myBalance()
-
-    //         // Assert
-    //         assert.equal(endingBalance, "0")
-    //     })
-    //     it("Can only withdraw your balance", async () => {
-    //         //const { deployer } = await getNamedAccounts()
-    //         const marketPlaceDeployerConnected =
-    //                   await marketPlace.connect(deployer)
-
-    //         // Act
-    //         await expect(
-    //             marketPlaceDeployerConnected.withdrawEther()
-    //         ).to.be.revertedWith("Marketplace__ZeroBalance")
-    //     })
-    // })
+    describe("Listing", function () {
+        beforeEach(async () => {
+            for (const item of dict_item) {
+                const trx = await marketplaceConnected.addAllowedItems(item)
+                await trx.wait()
+            }
+        })
+        it("allows listing of a valid item", async () => {
+            const trx = await marketplaceSeller.createListing(dict_item[1], quantity, pricePerUnit)
+            await trx.wait()
+            const orderCount  = await marketplace.orderCount()
+            const orderStruct = await marketplace.orders(orderCount)
+            assert.equal(orderStruct.seller, userSell.address)
+            assert.equal(orderStruct.item, dict_item[1])
+            assert.equal(Number(orderStruct.price), pricePerUnit)
+        })
+        it("does not allow listing of an invalid item", async () => {
+            await expect(
+                marketplaceSeller.createListing(invalidItem, quantity, pricePerUnit)
+            ).to.be.revertedWith("Marketplace__ItemNotAllowed()")
+        })
+    })
 })
