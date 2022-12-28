@@ -164,12 +164,12 @@ contract Marketplace is ReentrancyGuard {
         emit Withdraw(msg.sender, _amount);
     }
 
-    // Create an order as a seller
-    function makeOrder(
+    /// @dev Create an order as a seller
+    function createListing(
         string memory _item,
         uint256 _quantity,
         uint256 _price
-    ) public {
+    ) external {
         if (!allowedItems[_item]) revert Marketplace__ItemNotAllowed();
         orderCount += 1;
         orders[orderCount] = _order(
@@ -192,8 +192,8 @@ contract Marketplace is ReentrancyGuard {
         );
     }
 
-    // Fill an order as a buyer
-    function fillOrder(uint256 _id, uint256 _quantity) public payable {
+    /// @dev Fill an order as a buyer
+    function fillOrder(uint256 _id, uint256 _quantity) external payable {
         require(_id > 0 && _id <= orderCount);
         require(orderStatus[_id] == ORDER_STATE.OPEN);
 
@@ -224,9 +224,11 @@ contract Marketplace is ReentrancyGuard {
         );
     }
 
-    // Getting orders that are still available for buying
+    /// @dev Getting orders that are still available for buying
+    /// @notice This function is optional since an indexer can easily provide this
+    /// service at a cheaper rate.
     function open_order()
-        public
+        external
         view
         returns (
             uint256[] memory idOrder,
@@ -250,8 +252,8 @@ contract Marketplace is ReentrancyGuard {
         return (idOrder, _item, _qty, _prc);
     }
 
-    // When the buyer confirms the receipt of the items, the money is released to the seller
-    function OrderReceived(uint256 _id) public onlyBuyer(_id) {
+    /// @dev When the buyer confirms the receipt of the items, the money is released to the seller
+    function OrderReceived(uint256 _id) external onlyBuyer(_id) {
         address _buyer = Buyers[_id];
         _order memory order = orders[_id];
         require(orderStatus[_id] == ORDER_STATE.FILLED);
@@ -272,7 +274,7 @@ contract Marketplace is ReentrancyGuard {
         delete (orders[_id]);
     }
 
-    function cancelOpenOrder(uint256 _id) public onlySeller(_id) {
+    function cancelOpenOrder(uint256 _id) external onlySeller(_id) {
         _order memory order = orders[_id];
         require(orderStatus[_id] == ORDER_STATE.OPEN);
 
@@ -287,7 +289,7 @@ contract Marketplace is ReentrancyGuard {
         delete (orders[_id]);
     }
 
-    function cancelFilledOrder(uint256 _id) public {
+    function cancelFilledOrder(uint256 _id) external {
         _order memory order = orders[_id];
         address _buyer = Buyers[_id];
         if (order.seller != msg.sender && _buyer != msg.sender)
@@ -319,19 +321,18 @@ contract Marketplace is ReentrancyGuard {
     function _orderCompleted(uint256 _id, uint256 _amount) internal {
         _order memory order = orders[_id];
         _amount = _amount - ((feePercent * _amount) / 100);
-
         balance[order.seller] += _amount;
         balance[feeAccount] += ((feePercent * _amount) / 100);
     }
 
-    function addAllowedItems(string memory _item) public onlyOwner {
+    function addAllowedItems(string memory _item) external onlyOwner {
         if (allowedItems[_item]) revert Marketplace__AlreadyAllowed();
         allowedItems[_item] = true;
     }
 
     function checkItemIsAllowed(
         string memory _item
-    ) public view returns (bool) {
+    ) external view returns (bool) {
         return allowedItems[_item];
     }
 

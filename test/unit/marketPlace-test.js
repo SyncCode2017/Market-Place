@@ -1,66 +1,93 @@
 const { assert, expect } = require("chai")
-const { network, deployments, ethers } = require("hardhat")
+const { network, deployments, ethers, getNamedAccounts, getUnnamedAccounts } = require("hardhat")
 const {
     developmentChains,
     networkConfig,
 } = require("../../helper-hardhat-config")
+const { setupUser, setupUsers } = require("../../utils/helper-functions")
 
-!developmentChains.includes(network.name)
-    ? describe.skip
-    : describe("Marketplace Unit Tests", async function () {
-          let marketPlace, sendValue, accounts, userSell, userBuy, deployer
+const setup = deployments.createFixture(async () => {
+    await deployments.fixture()
+    const { deployer, userSell, userBuy } = await getNamedAccounts()
 
-          beforeEach(async () => {
-              await deployments.fixture(["all"])
-              marketPlace = await ethers.getContract("Marketplace")
-              sendValue = ethers.utils.parseEther("10")
-              accounts = await ethers.getSigners()
-              deployer = accounts[0]
-              userSell = accounts[1]
-              userBuy = accounts[2]
-          })
+    const contracts = {
+        marketplace  : await ethers.getContract("Marketplace"),
+    }
 
-          describe("deposit", function () {
-              it("Updates the amount deposit in data structure", async () => {
-                  const marketPlaceConnected = await marketPlace.connect(
-                      userBuy
-                  )
-                  await marketPlaceConnected.depositEther({ value: sendValue })
-                  const response = await marketPlaceConnected.myBalance()
-                  assert.equal(response.toString(), sendValue.toString())
-              })
-          })
-          describe("withdraw", function () {
-              //   beforeEach(async () => {
-              //       //await marketPlaceConnected.depositEther({ value: sendValue })
-              //   })
-              it("withdraws ETH", async () => {
-                  const marketPlaceConnected = await marketPlace.connect(
-                      userBuy
-                  )
-                  const startingBalance = await marketPlaceConnected.myBalance()
+    return {
+        ...contracts,
+        users    : await setupUsers(await getUnnamedAccounts(), contracts),
+        deployer : await setupUser(deployer, contracts),
+        userBuy    : await setupUser(userBuy, contracts),
+        userSell     : await setupUser(userSell, contracts),
 
-                  // Act
-                  const transactionResponse =
-                      await marketPlaceConnected.withdrawEther(startingBalance)
-                  const transactionReceipt = await transactionResponse.wait(1)
-                  //   const { gasUsed, effectiveGasPrice } = transactionReceipt
-                  //   const gasCost = gasUsed.mul(effectiveGasPrice)
+    }
+})
 
-                  const endingBalance = await marketPlaceConnected.myBalance()
+const verifyItemsAllowed = async(items) => {
+    
+    for (const item of items) {
+        const isAllowed  = await marketPlace.allowedItems(item)
+        assert.equal( isAllowed, true)
+    }
+}
 
-                  // Assert
-                  assert.equal(endingBalance, "0")
-              })
-              it("Can only withdraw your balance", async () => {
-                  //const { deployer } = await getNamedAccounts()
-                  const marketPlaceDeployerConnected =
-                      await marketPlace.connect(deployer)
+describe("Marketplace Unit Tests", async function () {
+    let marketplace, userSell, userBuy, deployer
+    const unitValue = ethers.utils.parseEther("10")
+    const dict_item = [
+        "orange",
+        "bread",
+        "mango",
+        "bannana",
+        "beans",
+        "rice",
+        "32in-bone-straight-wig",
+    ]
 
-                  // Act
-                  await expect(
-                      marketPlaceDeployerConnected.withdrawEther(sendValue)
-                  ).to.be.revertedWith("Marketplace__SmallerBalance")
-              })
-          })
-      })
+    beforeEach(async () => {
+        await deployments.fixture(["all"])
+        ({ deployer, userBuy, userSell, marketplace } = await setup())
+    })
+
+    describe("allowed items", function () {
+        it("allows the owner to add allowed items", async () => {
+            for (let i = 0; i < dict_item.length; i++) {
+                const transactionResponse = await deployer.marketPlace.addAllowedItems(
+                    dict_item[i]
+                )
+                await transactionResponse.wait()
+            }
+            assert.equal(response.toString(), sendValue.toString())
+        })
+    })
+    // describe("withdraw", function () {
+    //     //   beforeEach(async () => {
+    //     //       //await marketPlaceConnected.depositEther({ value: sendValue })
+    //     //   })
+    //     it("withdraws ETH", async () => {
+    //         const startingBalance = await userBuy.marketplace.myBalance()
+
+    //         // Act
+    //         const transactionResponse = await marketPlaceConnected.withdrawEther(startingBalance)
+    //         const transactionReceipt = await transactionResponse.wait(1)
+    //         //   const { gasUsed, effectiveGasPrice } = transactionReceipt
+    //         //   const gasCost = gasUsed.mul(effectiveGasPrice)
+
+    //         const endingBalance = await marketPlaceConnected.myBalance()
+
+    //         // Assert
+    //         assert.equal(endingBalance, "0")
+    //     })
+    //     it("Can only withdraw your balance", async () => {
+    //         //const { deployer } = await getNamedAccounts()
+    //         const marketPlaceDeployerConnected =
+    //                   await marketPlace.connect(deployer)
+
+    //         // Act
+    //         await expect(
+    //             marketPlaceDeployerConnected.withdrawEther()
+    //         ).to.be.revertedWith("Marketplace__ZeroBalance")
+    //     })
+    // })
+})

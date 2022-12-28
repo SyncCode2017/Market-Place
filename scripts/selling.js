@@ -1,4 +1,4 @@
-const { getNamedAccounts, ethers, network } = require("hardhat")
+const { ethers, network } = require("hardhat")
 //const { network, deployments } = require("hardhat")
 const { moveBlocks } = require("../utils/move-blocks")
 
@@ -13,31 +13,31 @@ async function main() {
 
     console.log("Listing an item to sell")
     const marketPlaceConnected = await marketPlace.connect(userSell)
-    const tx = await marketPlaceConnected.makeOrder(
+    const tx = await marketPlaceConnected.createListing(
         "orange",
         10,
         price
     )
     await tx.wait(1)
-    const tx1 = await marketPlaceConnected.makeOrder(
+    const tx1 = await marketPlaceConnected.createListing(
         "mango",
         15,
         price
     )
     await tx1.wait(1)
-    const tx2 = await marketPlaceConnected.makeOrder(
+    const tx2 = await marketPlaceConnected.createListing(
         "rice",
         5,
         price
     )
     await tx2.wait(1)
-    const tx3 = await marketPlaceConnected.makeOrder(
+    const tx3 = await marketPlaceConnected.createListing(
         "orange",
         20,
         price
     )
     await tx3.wait(1)
-    const tx4 = await marketPlaceConnected.makeOrder(
+    const tx4 = await marketPlaceConnected.createListing(
         "32in-bone-straight-wig",
         1,
         price
