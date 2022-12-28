@@ -26,7 +26,6 @@ describe("Marketplace Unit Tests", async function () {
         deployer = accounts[0]
         userSell = accounts[1]
         userBuy = accounts[2]
-        await deployments.fixture(["all"])
         await deployments.fixture(["marketplace"])
         marketplace = await ethers.getContract("Marketplace")
         marketplaceConnected = await ethers.getContract("Marketplace", deployer)

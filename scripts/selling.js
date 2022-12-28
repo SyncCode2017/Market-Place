@@ -7,7 +7,6 @@ async function main() {
     const accounts = await ethers.getSigners()
     const userSell = accounts[1]
     // const userBuy = accounts[2]
-    //await deployments.fixture(["all"])
     const marketPlace = await ethers.getContract("Marketplace")
     console.log(`Got contract MarketPlace at ${marketPlace.address}`)
 
