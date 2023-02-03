@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.8;
 
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 error Marketplace__NewItemExist();
@@ -13,6 +14,7 @@ error Marketplace__ItemNotAllowed();
 error Marketplace__NotTheBuyer();
 error Marketplace__AlreadyAllowed();
 error Marketplace__ZeroAddress();
+error Marketplace__TransactionFailed();
 
 /** @title A contract for buying and selling fungible items
  *  @author Abolaji
@@ -20,6 +22,9 @@ error Marketplace__ZeroAddress();
  */
 
 contract Marketplace is ReentrancyGuard {
+    // defensive as not required after pragma ^0.8
+    using SafeMath for uint256;
+
     //Variables
     address private feeAccount;
     uint256 private feePercent;
@@ -159,7 +164,11 @@ contract Marketplace is ReentrancyGuard {
         }
         user = payable(msg.sender);
         balance[msg.sender] = 0;
-        user.transfer(_amount);
+        // send tokens to the user
+        (bool success, ) = user.call{value: _amount}("");
+        if (!success) {
+            revert Marketplace__TransactionFailed();
+        }
         emit Withdraw(msg.sender, _amount);
     }
 
@@ -191,14 +200,17 @@ contract Marketplace is ReentrancyGuard {
     }
 
     /// @dev Fill an order as a buyer
-    function fillOrder(uint256 _id, uint256 _quantity) external payable {
+    function fillOrder(
+        uint256 _id,
+        uint256 _quantity
+    ) external payable nonReentrant {
         require(_id > 0 && _id <= orderCount);
         require(orderStatus[_id] == ORDER_STATE.OPEN);
 
         // Fetch the order
         _order memory order = orders[_id];
         require(_quantity <= order.qtty_to_sell, "Reduce the quantity");
-        uint256 amount = _quantity * order.price;
+        uint256 amount = _quantity.mul(order.price);
         require(msg.value == amount, "You need more eth");
 
         address _buyer = msg.sender;
@@ -244,7 +256,7 @@ contract Marketplace is ReentrancyGuard {
                 idOrder[i - 1] = i;
                 _item[i - 1] = orders[i].item;
                 _qty[i - 1] = orders[i].qtty_to_sell;
-                _prc[i - 1] = orders[i].price / (10 ** 15);
+                _prc[i - 1] = orders[i].price.div(10 ** 15);
             }
         }
         return (idOrder, _item, _qty, _prc);
@@ -318,9 +330,9 @@ contract Marketplace is ReentrancyGuard {
 
     function _orderCompleted(uint256 _id, uint256 _amount) internal {
         _order memory order = orders[_id];
-        _amount = _amount - ((feePercent * _amount) / 100);
+        _amount = _amount.sub(feePercent.mul(_amount).div(100));
         balance[order.seller] += _amount;
-        balance[feeAccount] += ((feePercent * _amount) / 100);
+        balance[feeAccount] += (feePercent.mul(_amount).div(100));
     }
 
     function addAllowedItems(string memory _item) external onlyOwner {
