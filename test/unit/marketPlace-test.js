@@ -7,7 +7,7 @@ const {
 
 const pricePerUnit = ethers.utils.parseEther("10")
 const quantity = 10
-const dict_item = [
+const allowedItemsArray = [
     "orange",
     "bread",
     "mango",
@@ -35,7 +35,7 @@ describe("Marketplace Unit Tests", async function () {
 
     describe("allowed items", function () {
         it("allows the owner to add allowed items", async () => {
-            for (const item of dict_item) {
+            for (const item of allowedItemsArray) {
                 const trx = await marketplaceConnected.addAllowedItems(item)
                 await trx.wait()
                 const isAllowed  = await marketplace.allowedItems(item)
@@ -51,24 +51,31 @@ describe("Marketplace Unit Tests", async function () {
 
     describe("Listing", function () {
         beforeEach(async () => {
-            for (const item of dict_item) {
+            for (const item of allowedItemsArray) {
                 const trx = await marketplaceConnected.addAllowedItems(item)
                 await trx.wait()
             }
         })
         it("allows listing of a valid item", async () => {
-            const trx = await marketplaceSeller.createListing(dict_item[1], quantity, pricePerUnit)
+            const trx = await marketplaceSeller.createListing(allowedItemsArray[1], quantity, pricePerUnit)
             await trx.wait()
             const orderCount  = await marketplace.orderCount()
             const orderStruct = await marketplace.orders(orderCount)
             assert.equal(orderStruct.seller, userSell.address)
-            assert.equal(orderStruct.item, dict_item[1])
+            assert.equal(orderStruct.item, allowedItemsArray[1])
             assert.equal(Number(orderStruct.price), pricePerUnit)
         })
         it("does not allow listing of an invalid item", async () => {
             await expect(
                 marketplaceSeller.createListing(invalidItem, quantity, pricePerUnit)
             ).to.be.revertedWith("Marketplace__ItemNotAllowed()")
+        })
+        it("emits OrderCreated event", async () => {
+            const trx = await marketplaceSeller.createListing(allowedItemsArray[1], quantity, pricePerUnit)
+            await trx.wait()
+            await expect(
+                marketplaceSeller.createListing(allowedItemsArray[1], quantity, pricePerUnit)
+            ).to.emit(marketplace, "OrderCreated")
         })
     })
 })
